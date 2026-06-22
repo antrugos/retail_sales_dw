@@ -1,0 +1,59 @@
+version: 2
+
+sources:
+  - name: raw_retail
+    schema: RAW_RETAIL
+    tables:
+      - name: sales_raw
+        description: "Línea de venta tal como llega del POS, sin transformar."
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 30, period: hour}
+          error_after: {count: 48, period: hour}
+      - name: products_raw
+        description: "Catálogo de productos, full-refresh diario."
+      - name: stores_raw
+        description: "Catálogo de tiendas, full-refresh diario."
+ 
+models:
+  - name: stg_sales
+    description: "Ventas limpias y tipadas, una fila por línea de venta."
+    columns:
+      - name: sale_id
+        tests:
+          - unique
+          - not_null
+      - name: sale_date
+        tests:
+          - not_null
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_stores')
+              field: store_id
+      - name: product_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_products')
+              field: product_id
+ 
+  - name: stg_products
+    description: "Catálogo de productos limpio."
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+      - name: unit_price
+        tests:
+          - not_null
+ 
+  - name: stg_stores
+    description: "Catálogo de tiendas limpio."
+    columns:
+      - name: store_id
+        tests:
+          - unique
+          - not_null

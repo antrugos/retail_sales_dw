@@ -1,0 +1,15 @@
+# --- Ingesta y tests (instalado y validado en este entorno) ---
+snowflake-connector-python==4.6.0
+python-dotenv==1.2.2
+pytest==9.1.1
+ 
+# --- Orquestación (instalar en tu entorno local / contenedor de Airflow) ---
+apache-airflow>=2.9,<3.0
+ 
+# --- Transformación ---
+dbt-core>=1.8
+dbt-snowflake>=1.8
+ 
+# --- Calidad de código (usado en CI) ---
+flake8>=7.0
+black>=24.0

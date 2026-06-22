@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: dim_store
+    description: "Dimensión de tienda."
+    columns:
+      - name: store_id
+        tests:
+          - unique
+          - not_null
+  
+  - name: dim_date
+    description: "Dimensión de fecha, generada con dbt_utils.date_spine sobre el rango de ventas."
+    columns:
+      - name: date_day
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_sales
+    description: "Fact table for sales transactions"
+    columns:
+      - name: sale_id
+        tests:
+          - unique
+          - not_null
+      - name: store_id
+        tests:
+          - relationships:
+              to: ref('dim_store')
+              field: store_id
+      - name: product_id
+        tests:
+          - relationships:
+              to: ref('dim_product')
+              field: product_id
+      - name: total_amount
+        tests:
+          - not_null
