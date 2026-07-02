@@ -4,6 +4,6 @@ select
     store_id,
     product_id,
     quantity,
-    unit_price,
+    unit_prices,
     quantity * unit_price as total_amount
 from {{ ref('stg_sales') }}
