@@ -6,7 +6,7 @@ cleaned as (
         cast(product_id as integer)         as product_id,
         trim(product_name)                  as product_name,
         trim(category)                      as category,
-        cast(unit_price as number(12,2))    as price
+        cast(unit_price as number(12,2))    as unit_price
     from source
 )
 
