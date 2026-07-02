@@ -86,11 +86,25 @@ class SnowflakeLoader:
 
     @with_retries()
     def _connect(self) -> SnowflakeConnection:
+        from pathlib import Path
+        from cryptography.hazmat.primitives import serialization
+
         logger.info("Conectando a Snowflake (account=%s)", self.config.account)
+
+        key_path = Path(__file__).parent.parent / "keys" / "rsa_key.pem"
+        with key_path.open("rb") as f:
+            private_key = serialization.load_pem_private_key(f.read(), password=None)
+
+        private_key_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+
         return snowflake.connector.connect(
             account=self.config.account,
             user=self.config.user,
-            password=self.config.password,
+            private_key=private_key_bytes,
             role=self.config.role,
             warehouse=self.config.warehouse,
             database=self.config.database,
@@ -113,13 +127,21 @@ class SnowflakeLoader:
     def load_dimension(self, local_path: Path) -> int:
         """Carga full-refresh para tablas de dimensión pequeñas (truncate + load)."""
         table = RAW_TABLES[local_path.name]
+        
+        # columnas por tabla
+        columns_map = {
+            "STORES_RAW": "(STORE_ID, STORE_NAME, CITY)",
+            "PRODUCTS_RAW": "(PRODUCT_ID, PRODUCT_NAME, CATEGORY, UNIT_PRICE)",
+        }
+        columns = columns_map[table]
+        
         with self.conn.cursor() as cur:
-            cur.execute(
-                f"PUT file://{local_path} @{self.config.stage_name} OVERWRITE = TRUE"
-            )
+            cur.execute(f"PUT file://{local_path} @{self.config.stage_name} OVERWRITE = TRUE")
             cur.execute(f"TRUNCATE TABLE IF EXISTS {table}")
             cur.execute(
-                f"COPY INTO {table} FROM @{self.config.stage_name}/{local_path.name} "
+                f"COPY INTO {table} {columns} "
+                f"FROM @{self.config.stage_name}/{local_path.name} "
+                f"FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '\"')"
                 f"ON_ERROR = ABORT_STATEMENT"
             )
             rows_loaded = cur.rowcount or 0
@@ -129,15 +151,17 @@ class SnowflakeLoader:
     def load_sales_partition(self, local_path: Path, sale_date: str) -> int:
         """Carga incremental e idempotente de una partición diaria de ventas."""
         table = "SALES_RAW"
+        columns = "(SALE_ID, SALE_DATE, STORE_ID, PRODUCT_ID, QUANTITY, UNIT_PRICE, TOTAL_AMOUNT)"
+        
         with self.conn.cursor() as cur:
-            cur.execute(
-                f"PUT file://{local_path} @{self.config.stage_name} OVERWRITE = TRUE"
-            )
+            cur.execute(f"PUT file://{local_path} @{self.config.stage_name} OVERWRITE = TRUE")
             # Idempotencia: borra la partición antes de recargarla, así
             # un retry o un backfill manual no duplica filas.
             cur.execute(f"DELETE FROM {table} WHERE sale_date = %s", (sale_date,))
             cur.execute(
-                f"COPY INTO {table} FROM @{self.config.stage_name}/{local_path.name} "
+                f"COPY INTO {table} {columns} " 
+                f"FROM @{self.config.stage_name}/{local_path.name} "
+                f"FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '\"')"
                 f"ON_ERROR = ABORT_STATEMENT"
             )
             rows_loaded = cur.rowcount or 0

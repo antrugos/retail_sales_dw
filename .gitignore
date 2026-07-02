@@ -6,7 +6,8 @@ dbt_project/target/
 dbt_project/dbt_packages/
 dbt_project/logs/
 data/raw/
+keys/
 .venv/
 venv/
 *.egg-info/
-.DS_Store
+.DS_Storekeys/
