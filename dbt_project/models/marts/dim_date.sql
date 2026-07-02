@@ -5,22 +5,21 @@ with bounds as (
     from {{ ref('stg_sales') }}
 ),
 
-spine as (
-    {{ dbt_utils.date_spine(
-        datepart="day",
-        start_date="(select min_date from bounds)",
-        end_date="(select max_date from bounds)"
-    ) }}
+date_spine as (
+    select
+        dateadd(day, seq4(), (select min_date from bounds)) as date_day
+    from table(generator(rowcount => 365))
 )
 
 select 
-    cast(date_day as date)              as date_day,
-    extract(year from date_day)         as year,
-    extract(month from date_day)        as month,
-    extract(dayofweek from date_day)    as day,
+    d.date_day,
+    extract(year from d.date_day)       as year,
+    extract(month from d.date_day)      as month,
+    extract(dayofweek from date_day)    as day_of_week,
     case 
-        when extract(dayofweek from date_day) in (0, 6)
+        when extract(dayofweek from d.date_day) in (0, 6)
         then true 
         else false 
     end as is_weekend
-from spine
+from date_spine d
+join bounds b on d.date_day between b.min_date and b.max_date

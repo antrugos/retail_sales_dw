@@ -1,39 +1,49 @@
 version: 2
 
 models:
+  - name: fct_sales
+    description: "Tabla de hechos de ventas."
+    columns:
+      - name: sale_id
+        data_tests:
+          - unique
+          - not_null
+      - name: store_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+      - name: product_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_id
+      - name: total_amount
+        data_tests:
+          - not_null
+
+  - name: dim_product
+    description: "Dimensión de producto."
+    columns:
+      - name: product_id
+        data_tests:
+          - unique
+          - not_null
+
   - name: dim_store
     description: "Dimensión de tienda."
     columns:
       - name: store_id
-        tests:
-          - unique
-          - not_null
-  
-  - name: dim_date
-    description: "Dimensión de fecha, generada con dbt_utils.date_spine sobre el rango de ventas."
-    columns:
-      - name: date_day
-        tests:
+        data_tests:
           - unique
           - not_null
 
-  - name: fct_sales
-    description: "Fact table for sales transactions"
+  - name: dim_date
+    description: "Dimensión de fecha generada con Snowflake GENERATOR."
     columns:
-      - name: sale_id
-        tests:
+      - name: date_day
+        data_tests:
           - unique
-          - not_null
-      - name: store_id
-        tests:
-          - relationships:
-              to: ref('dim_store')
-              field: store_id
-      - name: product_id
-        tests:
-          - relationships:
-              to: ref('dim_product')
-              field: product_id
-      - name: total_amount
-        tests:
           - not_null
